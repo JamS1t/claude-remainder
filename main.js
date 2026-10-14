@@ -120,6 +120,11 @@ let snapped = false;
 async function snapTour() {
   if (!SNAP_DIR || snapped || !state.summary) return;
   snapped = true;
+  // --white: a plain white window behind the dock, to check the glass against bright backgrounds
+  if (process.argv.includes('--white')) {
+    const a = display.workArea;
+    new BrowserWindow({ ...a, frame: false, backgroundColor: '#ffffff', skipTaskbar: true, focusable: false }).showInactive();
+  }
   await wait(2500);
   fs.mkdirSync(SNAP_DIR, { recursive: true });
   const steps = [

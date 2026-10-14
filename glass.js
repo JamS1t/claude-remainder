@@ -100,7 +100,8 @@ void main() {
   vec4 look = uLook[i];
 
   float cov = clamp(0.5 - d * uDpr, 0.0, 1.0);
-  float shadow = look.z * exp(-max(ds + 3.0, 0.0) / 11.0) * (1.0 - smoothstep(30.0, 48.0, ds));
+  // light glass gets a deeper, wider shadow so it lifts off bright backgrounds
+  float shadow = look.z * mix(1.0, 1.6, look.x) * exp(-max(ds + 3.0, 0.0) / mix(11.0, 15.0, look.x)) * (1.0 - smoothstep(30.0, 48.0, ds));
   if (cov <= 0.0) { o = vec4(0.0, 0.0, 0.0, shadow); return; }
 
   vec2 e = vec2(0.5, 0.0);
@@ -122,15 +123,20 @@ void main() {
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = clamp(mix(vec3(l), col, 1.15), 0.0, 1.0);
   float tint = clamp(look.w + 0.1 * look.x, 0.0, 0.92) * mix(1.0, 0.5, 1.0 - smoothstep(2.0, 16.0, depth));
-  col = mix(col, vec3(look.x), tint);
+  // light glass tints toward a cool off-white, not paper white, so it reads as a layer above a white page
+  col = mix(col, look.x * vec3(0.925, 0.935, 0.955), tint);
 
   // Specular rim: constant 1.4 px band, brightest facing the light, with a softer glint opposite.
   vec2 L = normalize(vec2(-0.45, -0.89));
   float ndl = dot(n, L);
   float spec = 0.3 + 0.6 * pow(max(ndl, 0.0), 1.6) + 0.25 * pow(max(-ndl, 0.0), 2.2);
-  float rim = 1.0 - smoothstep(0.0, 1.4, depth);
+  // light glass: the highlight moves 1 px in, inside a dark hairline that defines the edge on white
+  float rd = depth - look.x;
+  float rim = (1.0 - smoothstep(0.0, 1.4, rd)) * smoothstep(-0.6, 0.0, rd);
+  float outline = (1.0 - smoothstep(0.3, 1.2, depth)) * look.x;
   float body = (1.0 - smoothstep(1.4, 14.0, depth)) * (1.0 - rim);
   col = mix(col, vec3(1.0), rim * spec * mix(0.6, 0.4, look.x));
+  col = mix(col, vec3(0.0), outline * 0.16);
   // inner glow: light caught in the thick edge on the lit side, shade on the far side
   col += body * max(ndl, 0.0) * 0.07;
   col -= body * max(-ndl, 0.0) * 0.03;
