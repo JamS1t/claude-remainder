@@ -123,6 +123,11 @@ void main() {
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
   col = clamp(mix(vec3(l), col, 1.15), 0.0, 1.0);
   float tint = clamp(look.w + 0.1 * look.x, 0.0, 0.92) * mix(1.0, 0.5, 1.0 - smoothstep(2.0, 16.0, depth));
+  // One appearance per surface, but the backdrop can be half black, half white: wherever it is
+  // too close to the ink, tint harder so it stays readable (dark glass caps it at 0.32, light
+  // glass floors it at 0.72). Uniform backdrops never reach these bounds.
+  float need = mix(max(l - 0.32, 0.0) / max(l, 1e-3), max(0.72 - l, 0.0) / (0.935 - min(l, 0.9)), look.x);
+  tint = max(tint, min(need, 0.92));
   // light glass tints toward a cool off-white, not paper white, so it reads as a layer above a white page
   col = mix(col, look.x * vec3(0.925, 0.935, 0.955), tint);
 

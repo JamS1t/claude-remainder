@@ -18,7 +18,7 @@ const LIMITS_EVERY = 120e3, SCAN_EVERY = 60e3, CURSOR_EVERY = 33;
 // itself is invisible to screenshots because it is excluded from capture)
 const SNAP_DIR = (process.argv.find(a => a.startsWith('--snap=')) || '').slice(7);
 
-if (!app.requestSingleInstanceLock()) app.exit(0);
+if (!SNAP_DIR && !app.requestSingleInstanceLock()) app.exit(0); // snapshots run beside a live dock
 
 let win, display, worker;
 const state = { limits: null, rtk: null, summary: null, err: '', plan: data.planName() };
@@ -125,9 +125,13 @@ async function snapTour() {
   if (!SNAP_DIR || snapped || !state.summary) return;
   snapped = true;
   // --white: a plain white window behind the dock, to check the glass against bright backgrounds
-  if (process.argv.includes('--white')) {
+  // --split: black left, white right, the edge under the middle of the panel (mixed backdrops)
+  const split = process.argv.includes('--split');
+  if (split || process.argv.includes('--white')) {
     const a = display.workArea;
-    new BrowserWindow({ ...a, frame: false, backgroundColor: '#ffffff', skipTaskbar: true, focusable: false }).showInactive();
+    const bg = new BrowserWindow({ ...a, frame: false, backgroundColor: '#ffffff', skipTaskbar: true, focusable: false });
+    if (split) bg.loadURL(`data:text/html,<body style="margin:0;height:100vh;background:linear-gradient(90deg,%23000 ${a.width - 250}px,%23fff 0)">`);
+    bg.showInactive();
   }
   await wait(2500);
   fs.mkdirSync(SNAP_DIR, { recursive: true });
