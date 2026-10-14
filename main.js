@@ -8,6 +8,10 @@ const { spawn } = require('child_process');
 const { Worker } = require('worker_threads');
 const data = require('./data');
 
+// Started from inside a Claude Code session (dev runs), the marker would leak into every session the
+// projects launcher opens and turn their transcript saving off.
+delete process.env.CLAUDE_CODE_CHILD_SESSION;
+
 const WIDTH = 480; // room for dock + gap + panel + shadow
 const LIMITS_EVERY = 120e3, SCAN_EVERY = 60e3, CURSOR_EVERY = 33;
 // --snap=<dir>: render each UI state, save PNGs of the page and quit (visual checks; the window
