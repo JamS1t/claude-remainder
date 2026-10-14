@@ -73,11 +73,12 @@ html, body {
 }
 #expand { top: 218px; }
 #expand.open svg { transform: rotate(180deg); }
-/* projects launcher: a third ring, its track around a terminal glyph */
+/* projects launcher: a filled disc behind a terminal glyph, so it doesn't read as a third meter */
 #launch { top: 150px; }
 #cap-launch { top: 195px; }
 .ring-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-#launch.open .track { stroke: rgba(var(--ink), .32); }
+#launch .track { fill: var(--fill-strong); stroke: none; }
+#launch.open .track { fill: rgba(var(--ink), .32); }
 
 /* ---------- popover ---------- */
 /* content centred as one block so the space above the title matches the space below the bar */
