@@ -274,14 +274,13 @@
     kick();
   }
 
-  function setTab(i, animate = true) {
+  // No fade on switch: Element.animate on #content made Chromium restyle it from a stale base style
+  // that still inherited the closed panel's visibility: hidden, leaving the new tab blank.
+  function setTab(i) {
     if (i === state.tab) return;
     state.tab = i;
     renderPanel(false); // rings/bars show final values at once; only opening the panel animates them
     $('content').scrollTop = 0;
-    if (animate && !REDUCED) {
-      $('content').animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 120, easing: 'ease-out' });
-    }
   }
 
   // ---------- rendering ----------
@@ -542,7 +541,7 @@
     force(s) {
       state.forced = s;
       setHover(null);
-      if (s.tab != null) setTab(s.tab, false);
+      if (s.tab != null) setTab(s.tab);
       if (s.projects) { setPanel('projects'); if (s.q) { $('q').value = s.q; renderProjects(); } }
       else if (s.panel) setPanel('details');
       else if (s.fly) setFly(s.fly); // from an open panel this takes the morph path
