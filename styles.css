@@ -80,12 +80,13 @@ html, body {
 #launch.open .track { stroke: rgba(var(--ink), .32); }
 
 /* ---------- popover ---------- */
-#fly { width: 248px; height: 78px; padding: 15px 20px 0; pointer-events: none; }
-.fly-top { display: flex; justify-content: space-between; align-items: baseline; }
+/* content centred as one block so the space above the title matches the space below the bar */
+#fly { width: 248px; height: 88px; padding: 0 20px; display: flex; flex-direction: column; justify-content: center; pointer-events: none; }
+.fly-top { display: flex; justify-content: space-between; align-items: center; }
 .fly-title { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
 .fly-val { font: 600 22px/22px var(--display); letter-spacing: -.26px; }
 .fly-sub { margin-top: 3px; font-size: 11px; color: var(--secondary); }
-.meter { height: 4px; margin-top: 10px; border-radius: 2px; background: var(--fill-strong); overflow: hidden; }
+.meter { height: 4px; margin-top: 11px; border-radius: 2px; background: var(--fill-strong); overflow: hidden; }
 .meter i { display: block; height: 100%; border-radius: 2px; transition: width .8s var(--ease); }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
 

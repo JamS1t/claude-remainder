@@ -8,7 +8,7 @@
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // geometry, css px
-  const DOCK_W = 62, DOCK_H = 264, FLY_W = 248, FLY_H = 78, PANEL_W = 368, PANEL_MAX_H = 600, PROJ_W = 320, PROJ_MAX_H = 460;
+  const DOCK_W = 62, DOCK_H = 264, FLY_W = 248, FLY_H = 88, PANEL_W = 368, PANEL_MAX_H = 600, PROJ_W = 320, PROJ_MAX_H = 460;
   const PANEL_GAP = 14, FLY_GAP = 12, RING_Y = { session: 34, weekly: 102 }, LAUNCH_Y = 170, EXPAND_Y = 232;
   const OPEN_DELAY = 90, CLOSE_DELAY = 260, FLY_DELAY = 50, FLY_HIDE = 140, SWAP_DELAY = 120;
 
