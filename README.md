@@ -27,9 +27,8 @@ Token weights mirror API price ratios (cache read 0.1x, cache write 1.25x/2x, ou
 - Windows 10 (2004+) or 11
 - Python 3.10+ with Tkinter (the standard installer includes it)
 - Claude Code logged in with a Claude subscription (`~/.claude/.credentials.json`)
-- Optional: [rtk](https://github.com/rtk-ai/rtk) on PATH for the RTK savings line
-
 - [Pillow](https://pypi.org/project/pillow/) (`pip install pillow`) for the glass rendering
+- Optional: [rtk](https://github.com/rtk-ai/rtk) on PATH for the RTK savings line
 
 ## Run
 
