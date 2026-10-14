@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' blob: mediastream:">
+  <title>Claude Dock</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <canvas id="glass"></canvas>
+  <video id="capture" muted playsinline></video>
+
+  <div id="dock" class="surface" role="toolbar" aria-label="Claude usage">
+    <div class="ring" id="ring-session" aria-label="Session usage">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <defs><linearGradient id="grad-session" x1="0" y1="0" x2="1" y2="1"><stop offset="0"/><stop offset="1"/></linearGradient></defs>
+        <circle class="track" cx="20" cy="20" r="17.25"/>
+        <circle class="arc" cx="20" cy="20" r="17.25" stroke="url(#grad-session)"/>
+      </svg>
+      <span class="ring-val num">–</span>
+    </div>
+    <div class="ring-cap" id="cap-session">Session</div>
+    <div class="ring" id="ring-weekly" aria-label="Weekly usage">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <defs><linearGradient id="grad-weekly" x1="0" y1="0" x2="1" y2="1"><stop offset="0"/><stop offset="1"/></linearGradient></defs>
+        <circle class="track" cx="20" cy="20" r="17.25"/>
+        <circle class="arc" cx="20" cy="20" r="17.25" stroke="url(#grad-weekly)"/>
+      </svg>
+      <span class="ring-val num">–</span>
+    </div>
+    <div class="ring-cap" id="cap-weekly">Weekly</div>
+    <div class="expand" id="expand" aria-label="Show details">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+    </div>
+  </div>
+
+  <div id="fly" class="surface" aria-live="polite">
+    <div class="fly-top">
+      <span class="fly-title"><i class="dot" id="fly-dot"></i><span id="fly-title"></span></span>
+      <span class="fly-val num" id="fly-val"></span>
+    </div>
+    <div class="fly-sub" id="fly-sub"></div>
+    <div class="meter"><i id="fly-bar"></i></div>
+  </div>
+
+  <div id="panel" class="surface">
+    <header class="head">
+      <span class="title">Claude</span>
+      <span class="badge" id="plan"></span>
+      <span class="updated num" id="updated"></span>
+    </header>
+    <nav class="seg" id="seg" role="tablist">
+      <i class="seg-thumb" id="thumb"></i>
+      <button role="tab" data-tab="0">Overview</button>
+      <button role="tab" data-tab="1">Projects</button>
+      <button role="tab" data-tab="2">Insights</button>
+      <button role="tab" data-tab="3">Plugins</button>
+    </nav>
+    <div class="scroll" id="content"></div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="glass.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

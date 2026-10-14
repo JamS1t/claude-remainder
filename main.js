@@ -1,0 +1,139 @@
+'use strict';
+// Main process: one transparent, click-through, always-on-top window along the right edge of the
+// primary display. The renderer draws the glass dock, popovers and panel inside it.
+const { app, BrowserWindow, Menu, desktopCapturer, ipcMain, screen } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const { Worker } = require('worker_threads');
+const data = require('./data');
+
+const WIDTH = 480; // room for dock + gap + panel + shadow
+const LIMITS_EVERY = 120e3, SCAN_EVERY = 60e3, CURSOR_EVERY = 33;
+// --snap=<dir>: render each UI state, save PNGs of the page and quit (visual checks; the window
+// itself is invisible to screenshots because it is excluded from capture)
+const SNAP_DIR = (process.argv.find(a => a.startsWith('--snap=')) || '').slice(7);
+
+if (!app.requestSingleInstanceLock()) app.exit(0);
+
+let win, display, worker;
+const state = { limits: null, rtk: null, summary: null, err: '', plan: data.planName() };
+
+const frameBounds = () => {
+  const a = display.workArea;
+  return { x: a.x + a.width - WIDTH, y: a.y, width: WIDTH, height: a.height };
+};
+const geometry = () => ({ win: win.getBounds(), display: display.bounds });
+const send = (channel, value) => { if (win && !win.isDestroyed()) win.webContents.send(channel, value); };
+const push = () => send('state', data.viewModel(state));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function createWindow() {
+  display = screen.getPrimaryDisplay();
+  win = new BrowserWindow({
+    ...frameBounds(), show: false, frame: false, transparent: true, backgroundColor: '#00000000',
+    resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    skipTaskbar: true, focusable: false, hasShadow: false, alwaysOnTop: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), backgroundThrottling: false },
+  });
+  win.setAlwaysOnTop(true, 'floating');
+  // Excluded from screen capture, so the glass can sample what is behind it without seeing itself.
+  win.setContentProtection(true);
+  win.setIgnoreMouseEvents(true, { forward: true });
+  win.loadFile(path.join(__dirname, 'index.html'));
+  win.once('ready-to-show', () => win.showInactive());
+}
+
+ipcMain.handle('geometry', () => geometry());
+ipcMain.handle('capture-source', async () => {
+  const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+  const src = sources.find(s => s.display_id === String(display.id)) || sources[0];
+  const f = display.scaleFactor;
+  return { id: src.id, width: Math.round(display.size.width * f), height: Math.round(display.size.height * f) };
+});
+ipcMain.on('ignore', (_, ignore) => win.setIgnoreMouseEvents(ignore, { forward: true }));
+ipcMain.on('menu', () => Menu.buildFromTemplate([
+  { label: 'Refresh Now', click: refreshAll },
+  { type: 'separator' },
+  { label: 'Quit Claude Dock', click: () => app.quit() },
+]).popup({ window: win }));
+ipcMain.on('ready', push);
+
+// Hover must work while the window ignores the mouse, and must notice the pointer leaving the
+// window, so the cursor position is polled and sent window-relative.
+function pollCursor() {
+  let last = '';
+  setInterval(() => {
+    if (!win || win.isDestroyed()) return;
+    const p = screen.getCursorScreenPoint(), b = win.getBounds();
+    const rel = { x: p.x - b.x, y: p.y - b.y };
+    const key = `${rel.x},${rel.y}`;
+    if (key !== last) { last = key; send('cursor', rel); }
+  }, CURSOR_EVERY);
+}
+
+async function refreshLimits() {
+  try {
+    state.limits = await data.fetchLimits();
+    state.err = '';
+  } catch (e) {
+    state.err = `Couldn't load limits (${e.message}).`;
+  }
+  push();
+  state.rtk = await data.fetchRtk();
+  push();
+}
+
+function startWorker() {
+  worker = new Worker(path.join(__dirname, 'scan-worker.js'),
+    { workerData: { cachePath: path.join(app.getPath('userData'), 'scan-cache.json') } });
+  worker.on('message', m => {
+    if (m.ok) state.summary = m.summary;
+    else state.err = `Couldn't scan transcripts (${m.error}).`;
+    push();
+    snapTour();
+  });
+  worker.on('error', e => { state.err = `Couldn't scan transcripts (${e.message}).`; push(); });
+}
+
+function refreshAll() {
+  refreshLimits();
+  worker.postMessage('scan');
+}
+
+let snapped = false;
+async function snapTour() {
+  if (!SNAP_DIR || snapped || !state.summary) return;
+  snapped = true;
+  await wait(2500);
+  fs.mkdirSync(SNAP_DIR, { recursive: true });
+  const steps = [
+    ['01-dock', {}, 1200], ['02-fly-session', { fly: 'session' }, 900], ['03-fly-weekly', { fly: 'weekly' }, 900],
+    ['04-closing', {}, 120], ['05-closed', {}, 900], ['06-opening', { panel: true, tab: 0 }, 130],
+    ['07-overview', { panel: true, tab: 0 }, 1100], ['08-projects', { panel: true, tab: 1 }, 800],
+    ['09-insights', { panel: true, tab: 2 }, 800], ['10-plugins', { panel: true, tab: 3 }, 800],
+    ['11-morph-to-weekly', { fly: 'weekly' }, 140], ['12-weekly', { fly: 'weekly' }, 900],
+    ['13-morph-to-panel', { panel: true, tab: 3 }, 140], ['14-panel', { panel: true, tab: 3 }, 900],
+  ];
+  for (const [name, s, ms] of steps) {
+    await win.webContents.executeJavaScript(`window.__dock.force(${JSON.stringify(s)})`);
+    await wait(ms);
+    fs.writeFileSync(path.join(SNAP_DIR, `${name}.png`), (await win.webContents.capturePage()).toPNG());
+  }
+  fs.writeFileSync(path.join(SNAP_DIR, 'bounds.json'), JSON.stringify(win.getBounds()));
+  app.quit();
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  startWorker();
+  refreshAll();
+  setInterval(refreshLimits, LIMITS_EVERY);
+  setInterval(() => worker.postMessage('scan'), SCAN_EVERY);
+  pollCursor();
+  screen.on('display-metrics-changed', () => {
+    display = screen.getPrimaryDisplay();
+    win.setBounds(frameBounds());
+    send('geometry', geometry());
+  });
+});
+app.on('window-all-closed', () => app.quit());
