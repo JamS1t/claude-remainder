@@ -94,11 +94,16 @@ function summarize(cache, now = Date.now()) {
   const entries = Object.values(cache);
   const cwdByDir = {};
   for (const a of entries) if (a.cwd && !a.subagent) cwdByDir[a.projdir] = a.cwd;
-  const proj = {}, tools = {}, models = {}, sessions = {};
+  const proj = {}, tools = {}, models = {}, sessions = {}, dirs = {};
   const tot = [0, 0, 0, 0, 0, 0];
   let subW = 0;
   for (const a of entries) {
-    const name = baseName(a.cwd || cwdByDir[a.projdir] || a.projdir);
+    const cwd = a.cwd || cwdByDir[a.projdir];
+    const name = baseName(cwd || a.projdir);
+    if (cwd && !a.subagent) {
+      const k = cwd.toLowerCase();
+      if (!dirs[k] || dirs[k].mtime < a.mtime) dirs[k] = { name, cwd, mtime: a.mtime };
+    }
     let recent = false;
     for (const [hr, h] of Object.entries(a.hours)) {
       if (hr < weekAgo) continue;
@@ -121,6 +126,8 @@ function summarize(cache, now = Date.now()) {
     live: list.filter(s => now - s.mtime < 15 * 60e3).sort((a, b) => b.mtime - a.mtime)
       .map(s => ({ name: s.name, ctx: s.peakCtx, turns: s.turns })),
     sessions: list.map(s => ({ name: s.name, peakCtx: s.peakCtx })),
+    // every project folder Claude has run in, newest first (the projects launcher)
+    recent: Object.values(dirs).sort((a, b) => b.mtime - a.mtime),
     baseCtx: firsts.length ? firsts[Math.floor(firsts.length / 2)] : 0,
   };
 }
@@ -253,6 +260,7 @@ function viewModel({ limits, rtk, summary, err, plan }, now = Date.now()) {
   const first = summary.proj.length ? summary.proj[0][1] : 1;
   return Object.assign(vm, {
     live: summary.live.slice(0, 5),
+    recent: (summary.recent || []).map(r => ({ name: r.name, cwd: r.cwd, mtime: r.mtime })),
     projects: summary.proj.slice(0, 7).map(([name, v]) => ({ name, share: v / total, rel: v / first })),
     tools: summary.tools.slice(0, 5),
     subShare: summary.subW / (summary.tot[5] || 1),

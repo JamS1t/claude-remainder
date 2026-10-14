@@ -4,6 +4,7 @@
 const { app, BrowserWindow, Menu, desktopCapturer, ipcMain, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const { Worker } = require('worker_threads');
 const data = require('./data');
 
@@ -57,6 +58,21 @@ ipcMain.on('menu', () => Menu.buildFromTemplate([
   { label: 'Quit Claude Dock', click: () => app.quit() },
 ]).popup({ window: win }));
 ipcMain.on('ready', push);
+// The window is normally unfocusable so hovering never steals focus; the search field borrows it.
+ipcMain.handle('focus', (_, on) => {
+  if (on) { win.setFocusable(true); win.focus(); } else { win.blur(); win.setFocusable(false); }
+});
+// Projects launcher: resume Claude in a project folder. The folder must be one our own scan found,
+// so the page can never choose an arbitrary path to launch in.
+ipcMain.on('open-project', (_, cwd) => {
+  const r = ((state.summary && state.summary.recent) || []).find(x => x.cwd === cwd);
+  if (!r || !fs.existsSync(r.cwd)) return;
+  const fallback = () => spawn('cmd.exe', ['/c', 'start', '""', '/D', r.cwd, 'cmd', '/k', 'claude --continue'],
+    { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  const wt = spawn('wt.exe', ['-d', r.cwd, 'cmd', '/k', 'claude --continue'], { detached: true, stdio: 'ignore' });
+  wt.on('error', fallback); // no Windows Terminal: plain console window
+  wt.unref();
+});
 
 // Hover must work while the window ignores the mouse, and must notice the pointer leaving the
 // window, so the cursor position is polled and sent window-relative.
@@ -113,6 +129,8 @@ async function snapTour() {
     ['09-insights', { panel: true, tab: 2 }, 800], ['10-plugins', { panel: true, tab: 3 }, 800],
     ['11-morph-to-weekly', { fly: 'weekly' }, 140], ['12-weekly', { fly: 'weekly' }, 900],
     ['13-morph-to-panel', { panel: true, tab: 3 }, 140], ['14-panel', { panel: true, tab: 3 }, 900],
+    ['15-morph-to-projects', { projects: true }, 140], ['16-projects', { projects: true }, 900],
+    ['17-search', { projects: true, q: 'claude' }, 300],
   ];
   for (const [name, s, ms] of steps) {
     await win.webContents.executeJavaScript(`window.__dock.force(${JSON.stringify(s)})`);

@@ -29,6 +29,11 @@
       <span class="ring-val num">–</span>
     </div>
     <div class="ring-cap" id="cap-weekly">Weekly</div>
+    <div class="ring" id="launch" aria-label="Projects">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17.25"/></svg>
+      <span class="ring-val ring-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 16 5-5-5-5M12 18h7"/></svg></span>
+    </div>
+    <div class="ring-cap" id="cap-launch">Projects</div>
     <div class="expand" id="expand" aria-label="Show details">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
     </div>
@@ -57,6 +62,18 @@
       <button role="tab" data-tab="3">Plugins</button>
     </nav>
     <div class="scroll" id="content"></div>
+  </div>
+
+  <div id="projects" class="surface">
+    <header class="head">
+      <span class="title">Projects</span>
+      <span class="updated num" id="proj-count"></span>
+    </header>
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search projects" spellcheck="false" autocomplete="off" aria-label="Search projects">
+    </label>
+    <div class="scroll" id="proj-list"></div>
   </div>
 
   <script src="shared.js"></script>

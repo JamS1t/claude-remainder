@@ -64,6 +64,7 @@ const { Spring, tokens, duration, lerpRect, inside, esc } = require('./shared');
   const s = data.summarize(cache);
   assert.equal(s.proj[0][0], 'demo');
   assert.equal(s.live.length, 1, 'subagent transcripts are not sessions');
+  assert.deepEqual(s.recent.map(r => r.cwd), ['C:\\work\\demo'], 'one recent folder, subagents excluded');
   assert.ok(s.subW > 0);
 
   // insights and view model

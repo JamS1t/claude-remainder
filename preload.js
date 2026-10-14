@@ -9,5 +9,7 @@ contextBridge.exposeInMainWorld('bridge', {
   captureSource: () => ipcRenderer.invoke('capture-source'),
   setIgnore: ignore => ipcRenderer.send('ignore', ignore),
   menu: () => ipcRenderer.send('menu'),
+  openProject: cwd => ipcRenderer.send('open-project', cwd),
+  focus: on => ipcRenderer.invoke('focus', on),
   ready: () => ipcRenderer.send('ready'),
 });

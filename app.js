@@ -8,8 +8,8 @@
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // geometry, css px
-  const DOCK_W = 62, DOCK_H = 192, FLY_W = 248, FLY_H = 78, PANEL_W = 368, PANEL_MAX_H = 600;
-  const PANEL_GAP = 14, FLY_GAP = 12, RING_Y = { session: 34, weekly: 102 }, EXPAND_Y = 160;
+  const DOCK_W = 62, DOCK_H = 264, FLY_W = 248, FLY_H = 78, PANEL_W = 368, PANEL_MAX_H = 600, PROJ_W = 320, PROJ_MAX_H = 460;
+  const PANEL_GAP = 14, FLY_GAP = 12, RING_Y = { session: 34, weekly: 102 }, LAUNCH_Y = 170, EXPAND_Y = 232;
   const OPEN_DELAY = 90, CLOSE_DELAY = 260, FLY_DELAY = 50, FLY_HIDE = 140, SWAP_DELAY = 120;
 
   const RING = { session: ['#FFB340', '#FF6A3D'], weekly: ['#64D2FF', '#0A84FF'], critical: ['#FF8A80', '#FF453A'] };
@@ -28,10 +28,13 @@
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/>',
     terminal: '<path d="m4 17 6-6-6-6M12 19h8"/>',
+    chevron: '<path d="m9 6 6 6-6 6"/>',
   };
 
   const state = { vm: null, w: innerWidth, h: innerHeight, dockY: 0, pointer: null, zone: null,
-    fly: null, flyKind: null, flyFrom: null, panelFrom: null, lastFly: null, lastPanel: null, panel: false, tab: 0, forced: null, drag: null, ignoring: true };
+    fly: null, flyKind: null, flyFrom: null, panelFrom: null, lastFly: null, lastPanel: null,
+    panel: false, pmode: 'details', // panel: false | 'details' | 'projects'; pmode outlives it while closing
+    tab: 0, forced: null, drag: null, ignoring: true };
   const springs = {
     panel: new Spring(0, 230, 25), fly: new Spring(0, 340, 31), flyY: new Spring(0, 420, 40),
     hover: new Spring(0, 320, 26), tDock: new Spring(0, 70, 17), tFly: new Spring(0, 70, 17), tPanel: new Spring(0, 70, 17),
@@ -45,10 +48,13 @@
   const dockRect = () => ({ x: dockLeft(), y: state.dockY, w: DOCK_W, h: DOCK_H });
   const ringRect = k => ({ x: dockLeft() + 11, y: state.dockY + RING_Y[k] - 20, w: 40, h: 40 });
   const expandRect = () => ({ x: dockLeft() + 13, y: state.dockY + EXPAND_Y - 14, w: 36, h: 28 });
-  const panelTarget = () => {
-    const h = Math.min(PANEL_MAX_H, state.h - 24);
-    return { x: dockLeft() - PANEL_GAP - PANEL_W, y: clamp(state.dockY + DOCK_H / 2 - h / 2, 12, state.h - h - 12), w: PANEL_W, h };
+  const launchRect = () => ({ x: dockLeft() + 11, y: state.dockY + LAUNCH_Y - 20, w: 40, h: 40 });
+  const panelTarget = (mode = state.pmode) => {
+    const [w, maxH, cy] = mode === 'projects' ? [PROJ_W, PROJ_MAX_H, LAUNCH_Y] : [PANEL_W, PANEL_MAX_H, DOCK_H / 2];
+    const h = Math.min(maxH, state.h - 24);
+    return { x: dockLeft() - PANEL_GAP - w, y: clamp(state.dockY + cy - h / 2, 12, state.h - h - 12), w, h };
   };
+  const panelOrigin = () => (state.pmode === 'projects' ? launchRect() : expandRect());
   const flyTargetY = k => clamp(state.dockY + RING_Y[k] - FLY_H / 2, 8, state.h - FLY_H - 8);
   const flyTarget = () => ({ x: dockLeft() - FLY_GAP - FLY_W, y: springs.flyY.value, w: FLY_W, h: FLY_H });
 
@@ -88,7 +94,7 @@
     let panel = null, panelRect = null;
     if (P > 0.002) {
       const p = clamp(P, 0, 1);
-      panelRect = lerpRect(state.panelFrom || expandRect(), panelTarget(), P);
+      panelRect = lerpRect(state.panelFrom || panelOrigin(), panelTarget(), P);
       panel = { rect: panelRect, radius: lerp(14, 30, p), exp: lerp(2, 4, p), merge: 36 * (1 - p), theme: springs.tPanel.value, frost: 1, shadow: 0.3 * p, tint: 0.2 };
     }
     state.lastFly = flyRect;
@@ -97,10 +103,13 @@
 
     css($('dock'), 'transform', `translate(${d.x}px, ${d.y}px)`);
     place($('fly'), flyTarget(), flyRect, fly && fly.radius, F);
-    place($('panel'), panelTarget(), panelRect, panel && panel.radius, P);
+    const proj = state.pmode === 'projects';
+    place($('panel'), panelTarget(), proj ? null : panelRect, panel && panel.radius, P);
+    place($('projects'), panelTarget(), proj ? panelRect : null, panel && panel.radius, P);
     ink($('dock'), springs.tDock.value);
     ink($('fly'), springs.tFly.value);
     ink($('panel'), springs.tPanel.value);
+    ink($('projects'), springs.tPanel.value);
     themeFromBackdrop();
   }
 
@@ -145,7 +154,8 @@
   function zoneAt(p) {
     if (!p) return null;
     for (const k of ['session', 'weekly']) if (inside(ringRect(k), p, 8)) return k;
-    if (inside(expandRect(), p, 8)) return 'expand';
+    if (inside(launchRect(), p, 6)) return 'launch';
+    if (inside(expandRect(), p, 6)) return 'expand';
     return inside(dockRect(), p) ? 'dock' : null;
   }
 
@@ -160,13 +170,15 @@
       p.y >= Math.min(t.y, state.dockY) && p.y <= Math.max(t.y + t.h, state.dockY + DOCK_H);
 
     const ring = zone === 'session' || zone === 'weekly';
+    const want = zone === 'expand' ? 'details' : zone === 'launch' ? 'projects' : null;
+    // resting on another dock control morphs the open panel into that control's surface
+    intent('swapRing', state.panel && ring, SWAP_DELAY, () => { if (zoneAt(state.pointer) === zone) setFly(zone); });
+    intent('swapPanel', state.panel && want && want !== state.panel, SWAP_DELAY, () => { if (zoneAt(state.pointer) === zone) setPanel(want); });
+    intent('open', !state.panel && want, OPEN_DELAY, () => { if (zoneAt(state.pointer) === zone) setPanel(want); });
     if (state.panel) {
-      // resting on a ring while the panel is open morphs the panel into that ring's popover
-      if (ring) later('swap', SWAP_DELAY, () => { if (zoneAt(state.pointer) === zone) setFly(zone); });
-      else cancel('swap');
-      if (zone || inPanel || bridgeZone) cancel('close'); else later('close', CLOSE_DELAY, () => setPanel(false));
-    } else if (zone === 'expand') later('open', OPEN_DELAY, () => setPanel(true));
-    else cancel('open');
+      // a search in progress keeps the launcher open until Esc, a pick, or a click elsewhere
+      if (zone || inPanel || bridgeZone || searching()) cancel('close'); else later('close', CLOSE_DELAY, () => setPanel(false));
+    }
 
     if (!state.panel && ring) {
       cancel('flyHide');
@@ -183,12 +195,16 @@
     }
   }
 
+  function intent(name, active, ms, fn) { if (active) later(name, ms, fn); else cancel(name); }
+  const searching = () => state.panel === 'projects' && document.activeElement === $('q');
+
   function setHover(zone) {
     if (zone === state.zone) return;
     state.zone = zone;
     $('ring-session').classList.toggle('hover', zone === 'session');
     $('ring-weekly').classList.toggle('hover', zone === 'weekly');
     $('expand').classList.toggle('hover', zone === 'expand');
+    $('launch').classList.toggle('hover', zone === 'launch');
     springs.hover.set(zone ? 1 : 0);
     kick();
   }
@@ -218,30 +234,43 @@
 
   function closePanelNow() {
     cancel('close');
-    cancel('swap');
     state.panel = false;
     state.panelFrom = null;
     springs.panel.snap(0);
-    $('expand').classList.remove('open');
+    panelClosed();
   }
 
-  function setPanel(open) {
+  function panelClosed() {
+    $('expand').classList.remove('open');
+    $('launch').classList.remove('open');
+    if (document.activeElement === $('q')) { $('q').blur(); bridge.focus(false); }
+  }
+
+  // mode: false | 'details' | 'projects'
+  function setPanel(mode) {
     cancel('open');
     cancel('close');
-    if (open === state.panel) return;
-    state.panel = open;
-    if (open) {
-      // morph: a visible popover's glass grows into the panel
-      const morph = state.flyKind && springs.fly.value > 0.3;
-      state.panelFrom = morph ? state.lastFly : null;
-      if (morph) { springs.fly.snap(0); state.flyKind = null; state.flyFrom = null; }
+    cancel('swapPanel');
+    if (mode === state.panel) return;
+    if (mode) {
+      // morph: a visible popover's, or the other panel's, glass grows into this panel
+      const fromFly = state.flyKind && springs.fly.value > 0.3;
+      const fromPanel = state.panel && springs.panel.value > 0.3;
+      state.panelFrom = fromFly ? state.lastFly : fromPanel ? state.lastPanel : null;
+      if (fromFly) { springs.fly.snap(0); state.flyKind = null; state.flyFrom = null; }
+      if (fromPanel) { springs.panel.snap(0); panelClosed(); }
       setFly(null);
-      $('content').scrollTop = 0;
-      renderPanel(true);
+      state.panel = state.pmode = mode;
+      if (mode === 'details') { $('content').scrollTop = 0; renderPanel(true); }
+      else { $('q').value = ''; $('proj-list').scrollTop = 0; renderProjects(); }
+      $('expand').classList.toggle('open', mode === 'details');
+      $('launch').classList.toggle('open', mode === 'projects');
+    } else {
+      state.panel = false;
+      state.panelFrom = null;
+      panelClosed();
     }
-    if (!open) { cancel('swap'); state.panelFrom = null; }
-    springs.panel.set(open ? 1 : 0);
-    $('expand').classList.toggle('open', open);
+    springs.panel.set(mode ? 1 : 0);
     kick();
   }
 
@@ -259,6 +288,11 @@
   const ringColors = (kind, pct) => (pct >= 90 ? RING.critical : RING[kind]);
   const pctW = v => `${clamp(v * 100, 2, 100).toFixed(1)}%`;
   const svg = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[name] || ''}</svg>`;
+  // biggest unit only, so the time never squeezes the project name: "now", "4 min", "3 hr", "2 days"
+  const ago = t => {
+    const m = Math.floor((Date.now() - t) / 60e3), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    return m < 1 ? 'now' : d ? `${d} day${d > 1 ? 's' : ''} ago` : h ? `${h} hr ago` : `${m} min ago`;
+  };
   const resetsIn = l => (l ? `Resets in ${duration(l.resetsAt - Date.now())}` : 'Loading…');
   const section = (title, note = '') => `<div class="section"><h3>${title}</h3><span>${note}</span></div>`;
   const empty = text => `<div class="group"><div class="empty">${esc(text)}</div></div>`;
@@ -394,13 +428,63 @@
     else { arcs.forEach(a => { a.style.transition = 'none'; }); apply(); }
   }
 
+  // ---------- projects launcher ----------
+  // every whitespace-separated term must appear in the folder name or path
+  function matches() {
+    const terms = $('q').value.toLowerCase().split(/\s+/).filter(Boolean);
+    return ((state.vm && state.vm.recent) || []).filter(r => {
+      const hay = `${r.name}\n${r.cwd}`.toLowerCase();
+      return terms.every(t => hay.includes(t));
+    });
+  }
+
+  function renderProjects() {
+    const vm = state.vm, list = $('proj-list');
+    const all = (vm && vm.recent) || [];
+    $('proj-count').textContent = all.length ? `${all.length} folders` : '';
+    if (!vm || vm.scanning) { list.innerHTML = empty('Scanning transcripts…'); return; }
+    const q = $('q').value, found = matches();
+    if (!found.length) { list.innerHTML = empty(q ? 'No project matches.' : 'No projects yet.'); return; }
+    list.innerHTML = section(q ? 'Matches' : 'Recent', 'Resume in terminal') + `<div class="group">${found.map((r, i) =>
+      `<div class="row action${i === 0 && q ? ' first' : ''}" style="--inset:54px" data-cwd="${esc(r.cwd)}" title="${esc(r.cwd)}">` +
+      `<span class="tile" style="background:#30B0C7">${svg('terminal')}</span><div class="row-main">` +
+      `<div class="row-line"><span class="row-title strong">${esc(r.name)}</span>` +
+      `<span class="row-detail">${esc(ago(r.mtime))}</span></div><div class="row-sub path">${esc(r.cwd)}</div></div>` +
+      `<span class="go">${svg('chevron')}</span></div>`).join('')}</div>`;
+  }
+
+  function launch(cwd, el) {
+    bridge.openProject(cwd);
+    if (el && !REDUCED) el.animate([{ transform: 'scale(.97)' }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.34, 1.36, .64, 1)' });
+    setTimeout(() => setPanel(false), 300); // the terminal takes focus; get out of the way
+  }
+
   function update() {
     updateDock();
     if (state.flyKind) renderFly();
-    if (state.panel) renderPanel(false);
+    if (state.panel === 'details') renderPanel(false);
+    if (state.panel === 'projects' && !searching()) renderProjects();
   }
 
   // ---------- input ----------
+  $('proj-list').addEventListener('click', e => {
+    const a = e.target.closest('[data-cwd]');
+    if (a) launch(a.dataset.cwd, a);
+  });
+  // borrow keyboard focus only once the search field is clicked
+  $('q').addEventListener('pointerdown', async e => {
+    if (document.activeElement === $('q')) return;
+    e.preventDefault();
+    await bridge.focus(true);
+    $('q').focus();
+  });
+  $('q').addEventListener('input', () => { $('proj-list').scrollTop = 0; renderProjects(); });
+  $('q').addEventListener('keydown', e => {
+    if (e.key === 'Escape') setPanel(false);
+    else if (e.key === 'Enter') { const r = matches()[0]; if (r) launch(r.cwd, $('proj-list').querySelector('.row.action')); }
+  });
+  // clicking anywhere outside the window ends the search
+  addEventListener('blur', () => { if (state.panel === 'projects') setPanel(false); });
   $('seg').addEventListener('click', e => {
     const b = e.target.closest('button');
     if (b) setTab(Number(b.dataset.tab));
@@ -424,7 +508,8 @@
     state.drag = null;
     if (!d) return;
     if (d.moved) { try { localStorage.setItem('dockY', String(state.dockY)); } catch { /* storage unavailable */ } }
-    else if (d.zone === 'expand') setPanel(!state.panel);
+    else if (d.zone === 'expand') setPanel(state.panel === 'details' ? false : 'details');
+    else if (d.zone === 'launch') setPanel(state.panel === 'projects' ? false : 'projects');
   });
   dockEl.addEventListener('contextmenu', e => { e.preventDefault(); bridge.menu(); });
   addEventListener('mousemove', e => onPointer({ x: e.clientX, y: e.clientY }));
@@ -458,7 +543,8 @@
       state.forced = s;
       setHover(null);
       if (s.tab != null) setTab(s.tab, false);
-      if (s.panel) setPanel(true);
+      if (s.projects) { setPanel('projects'); if (s.q) { $('q').value = s.q; renderProjects(); } }
+      else if (s.panel) setPanel('details');
       else if (s.fly) setFly(s.fly); // from an open panel this takes the morph path
       else { setPanel(false); setFly(null); }
     },

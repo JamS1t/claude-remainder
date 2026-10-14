@@ -36,7 +36,7 @@ html, body {
 .surface.light { text-shadow: 0 0 1px rgba(255, 255, 255, .5), 0 1px 3px rgba(255, 255, 255, .45); }
 
 /* ---------- dock ---------- */
-#dock { width: 62px; height: 192px; visibility: visible; }
+#dock { width: 62px; height: 264px; visibility: visible; }
 .ring {
   position: absolute; left: 11px; width: 40px; height: 40px;
   transition: transform .45s var(--spring);
@@ -44,7 +44,7 @@ html, body {
 #ring-session { top: 14px; }
 #ring-weekly { top: 82px; }
 .ring.hover { transform: scale(1.1); }
-.ring svg { width: 40px; height: 40px; transform: rotate(-90deg); overflow: visible; }
+.ring > svg { width: 40px; height: 40px; transform: rotate(-90deg); overflow: visible; }
 .ring circle { fill: none; stroke-width: 4.5; }
 .ring .track { stroke: var(--fill-strong); }
 .ring .arc {
@@ -62,7 +62,7 @@ html, body {
 #cap-session { top: 59px; }
 #cap-weekly { top: 127px; }
 .expand {
-  position: absolute; left: 13px; top: 146px; width: 36px; height: 28px; border-radius: 14px;
+  position: absolute; left: 13px; width: 36px; height: 28px; border-radius: 14px;
   display: grid; place-items: center; color: var(--secondary);
   transition: background-color .25s var(--ease), color .25s var(--ease), transform .45s var(--spring);
 }
@@ -71,7 +71,13 @@ html, body {
   width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4;
   stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--spring);
 }
-.expand.open svg { transform: rotate(180deg); }
+#expand { top: 218px; }
+#expand.open svg { transform: rotate(180deg); }
+/* projects launcher: a third ring, its track around a terminal glyph */
+#launch { top: 150px; }
+#cap-launch { top: 195px; }
+.ring-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+#launch.open .track { stroke: rgba(var(--ink), .32); }
 
 /* ---------- popover ---------- */
 #fly { width: 248px; height: 78px; padding: 15px 20px 0; pointer-events: none; }
@@ -85,6 +91,19 @@ html, body {
 
 /* ---------- panel ---------- */
 #panel { width: 368px; display: flex; flex-direction: column; }
+#projects { width: 320px; display: flex; flex-direction: column; }
+.search {
+  display: flex; align-items: center; gap: 8px; height: 34px; margin: 14px 22px 0; padding: 0 12px;
+  border-radius: 17px; background: var(--fill); color: var(--secondary);
+}
+.search svg { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.search input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--label); text-shadow: none;
+  font: 13px/1 var(--text); letter-spacing: -.08px; user-select: text; -webkit-user-select: text; cursor: text;
+}
+.search input::placeholder { color: var(--tertiary); }
+.search input::-webkit-search-cancel-button { display: none; }
+.row.action.first { background: var(--fill); }
 .head { display: flex; align-items: center; gap: 8px; padding: 20px 22px 0; }
 .title { font: 600 17px/22px var(--display); letter-spacing: -.43px; }
 .badge {
@@ -145,6 +164,11 @@ html, body {
 .tile { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 8px; color: #fff; }
 .tile svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .row.top { align-items: flex-start; }
+.row.action { transition: background-color .2s var(--ease); }
+.row.action:hover { background: var(--fill); }
+.row-sub.path { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.go { flex: none; display: grid; color: var(--tertiary); }
+.go svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .row.top .tile { margin-top: 1px; }
 
 .hero { display: flex; align-items: center; gap: 20px; padding: 18px; }
