@@ -1,4 +1,4 @@
-# claude-remainder
+# claudebar
 
 An always-on, liquid-glass dock on the right edge of your Windows screen that keeps your Claude Code usage in view: session and weekly limits, live sessions, which projects eat the most tokens, and suggestions drawn from your own transcripts.
 

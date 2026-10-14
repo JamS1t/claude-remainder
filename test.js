@@ -38,7 +38,7 @@ const { Spring, tokens, duration, lerpRect, inside, esc } = require('./shared');
   assert.ok(!a.moving);
 
   // transcript parsing: usage deduplicated by message id, tools counted per block
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-remainder-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudebar-'));
   const proj = path.join(dir, 'C--proj');
   fs.mkdirSync(path.join(proj, 'sess1', 'subagents'), { recursive: true });
   const ts = new Date().toISOString();

@@ -150,7 +150,7 @@ function readCredentials() {
 async function fetchLimits() {
   const { accessToken } = readCredentials(); // read per request so token refreshes by Claude Code are picked up
   const res = await fetch('https://api.anthropic.com/api/oauth/usage', {
-    headers: { Authorization: `Bearer ${accessToken}`, 'anthropic-beta': 'oauth-2025-04-20', 'User-Agent': 'claude-remainder' },
+    headers: { Authorization: `Bearer ${accessToken}`, 'anthropic-beta': 'oauth-2025-04-20', 'User-Agent': 'claudebar' },
     signal: AbortSignal.timeout(15000),
   });
   if (!res.ok) {
