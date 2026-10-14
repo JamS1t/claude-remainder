@@ -153,7 +153,11 @@ async function fetchLimits() {
     headers: { Authorization: `Bearer ${accessToken}`, 'anthropic-beta': 'oauth-2025-04-20', 'User-Agent': 'claude-remainder' },
     signal: AbortSignal.timeout(15000),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const e = new Error(`HTTP ${res.status}`);
+    e.retryAfter = Number(res.headers.get('retry-after')) * 1000 || 0; // seconds form only
+    throw e;
+  }
   return res.json();
 }
 
@@ -243,7 +247,7 @@ function advice(s, limits, rtk, now = Date.now()) {
 }
 
 // Everything the renderer draws, as plain data.
-function viewModel({ limits, rtk, summary, err, plan }, now = Date.now()) {
+function viewModel({ limits, limitsAt, rtk, summary, err, plan }, now = Date.now()) {
   const lim = kind => {
     const l = findLimit(limits, kind);
     return l ? { pct: l.percent, resetsAt: new Date(l.resets_at).getTime() } : null;
@@ -252,7 +256,7 @@ function viewModel({ limits, rtk, summary, err, plan }, now = Date.now()) {
   const wp = weeklyPace(findLimit(limits, 'weekly_all'), now);
   if (weekly && wp) weekly.pace = wp.pace;
   const rows = ((limits || {}).seven_day_breakdown || {}).rows || [];
-  const vm = { plan, err, updated: now, session: lim('session'), weekly, scanning: !summary,
+  const vm = { plan, err, updated: limitsAt || now, session: lim('session'), weekly, scanning: !summary,
     breakdown: rows.filter(r => r.percent).map(r => ({ name: r.display_name, pct: r.percent })) };
   if (!summary) return vm;
   const { tips, plug, mix } = advice(summary, limits, rtk, now);

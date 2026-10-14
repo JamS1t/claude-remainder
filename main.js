@@ -57,7 +57,7 @@ ipcMain.handle('capture-source', async () => {
 });
 ipcMain.on('ignore', (_, ignore) => win.setIgnoreMouseEvents(ignore, { forward: true }));
 ipcMain.on('menu', () => Menu.buildFromTemplate([
-  { label: 'Refresh Now', click: refreshAll },
+  { label: 'Refresh Now', click: () => refreshAll(true) }, // still waits out a backoff
   { type: 'separator' },
   { label: 'Quit Claude Dock', click: () => app.quit() },
 ]).popup({ window: win }));
@@ -91,12 +91,33 @@ function pollCursor() {
   }, CURSOR_EVERY);
 }
 
-async function refreshLimits() {
+// Last good limits live on disk, so a restart shows them at once and skips the request while they
+// are fresh. Failures back off (Retry-After, else doubling up to 30 min) instead of retrying every
+// poll, which only prolongs a rate limit.
+const limitsPath = () => path.join(app.getPath('userData'), 'limits.json');
+let nextLimits = 0, backoff = 0;
+function loadLimits() {
   try {
-    state.limits = await data.fetchLimits();
-    state.err = '';
-  } catch (e) {
-    state.err = `Couldn't load limits (${e.message}).`;
+    const c = JSON.parse(fs.readFileSync(limitsPath(), 'utf8'));
+    Object.assign(state, { limits: c.limits, limitsAt: c.at });
+    nextLimits = c.at + LIMITS_EVERY;
+  } catch { /* first run */ }
+}
+async function refreshLimits(force) {
+  if (Date.now() >= nextLimits || (force === true && !backoff)) {
+    try {
+      state.limits = await data.fetchLimits();
+      state.limitsAt = Date.now();
+      state.err = '';
+      backoff = 0;
+      nextLimits = state.limitsAt + LIMITS_EVERY;
+      fs.writeFileSync(limitsPath(), JSON.stringify({ at: state.limitsAt, limits: state.limits }));
+    } catch (e) {
+      backoff = Math.min(Math.max(backoff * 2, LIMITS_EVERY), 30 * 60e3);
+      const wait = Math.max(e.retryAfter || 0, backoff);
+      nextLimits = Date.now() + wait;
+      state.err = `Couldn't ${state.limits ? 'refresh' : 'load'} limits (${e.message}). Retrying in ${Math.ceil(wait / 60e3)} min.`;
+    }
   }
   push();
   state.rtk = await data.fetchRtk();
@@ -115,8 +136,8 @@ function startWorker() {
   worker.on('error', e => { state.err = `Couldn't scan transcripts (${e.message}).`; push(); });
 }
 
-function refreshAll() {
-  refreshLimits();
+function refreshAll(force) {
+  refreshLimits(force);
   worker.postMessage('scan');
 }
 
@@ -155,6 +176,7 @@ async function snapTour() {
 }
 
 app.whenReady().then(() => {
+  loadLimits();
   createWindow();
   startWorker();
   refreshAll();
