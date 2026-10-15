@@ -1,55 +1,68 @@
 # claudebar
 
-An always-on, liquid-glass dock on the right edge of your Windows screen that keeps your Claude Code usage in view: session and weekly limits, live sessions, which projects eat the most tokens, and suggestions drawn from your own transcripts.
+An always-on, liquid-glass dock on the right edge of your Windows screen that keeps your Claude Code usage in view: session and weekly limits, live sessions, which projects eat the most tokens, suggestions drawn from your own transcripts, and a launcher to resume Claude in any recent project.
 
 ## Using it
 
-- **Dock**: a small glass tab hugging the right screen edge with two rings, the 5-hour session and the weekly limit.
-- **Hover a ring**: a glass pill slides out with the exact percentage, reset countdown and weekly pace.
-- **Chevron button**: opens the full panel with four tabs (Overview, Projects, Tips, Plugins). Arrow keys switch tabs, Esc closes.
-- **Drag** the dock up or down the edge. **Right-click** it to refresh or quit.
+- **Dock**: a glass tab hugging the right screen edge with two rings (the 5-hour session and the weekly limit), a Projects launcher and a chevron.
+- **Hover a ring**: a glass popover slides out with the exact percentage, reset countdown and weekly pace.
+- **Chevron**: hover or click to open the details panel with four tabs: Overview, Projects, Insights, Plugins.
+- **Projects launcher**: hover or click to open a searchable list of folders you've used Claude Code in. Click a row (or press Enter on the top match) to run `claude --continue` there in Windows Terminal, or a plain console if Windows Terminal isn't installed.
+- Hovering another dock control while a panel is open morphs the panel into that control's surface. Moving the pointer away closes it.
+- **Drag** the dock up or down the edge (the position is remembered). **Right-click** it to refresh or quit.
 
-The glass is real: each window is excluded from screen capture, so the app grabs what is behind it, blurs and tints it, and adds rim light and sheen. It refreshes when the screen behind changes.
+The glass is real: the window is excluded from screen capture, so the app streams what is behind it and draws refracting, frosted glass over it with a WebGL shader. Light backdrops switch the glass to dark text.
 
 ## What the panel shows
 
-- **Limits**: 5-hour session and weekly utilization with reset countdowns, from the same endpoint `/usage` reads.
-- **Live sessions**: sessions active in the last 15 minutes and their context size (amber above 150k, red above 300k).
-- **Top projects (7 days)**: each project's share of weighted usage.
-- **Where tokens go**: cache reads vs cache writes vs output vs fresh input, subagent share, most-used tools.
-- **Suggestions**: weekly pacing, oversized sessions, baseline context per fresh session, model mix, tool habits.
-- **Caveman / Ponytail / RTK**: how much output-trimming plugins can save at most, given your output share, plus `rtk gain` totals.
+- **Overview**: session and weekly utilization with reset countdowns (from the same endpoint `/usage` reads), weekly pace, usage by surface, and live sessions active in the last 15 minutes with their context size (amber above 150k, red above 300k).
+- **Projects**: each project's share of weighted usage over 7 days, where tokens go (cache reads, cache writes, output, fresh input), subagent share and most-used tools.
+- **Insights**: weekly pacing, oversized sessions, baseline context per fresh session, model mix, tool habits.
+- **Plugins**: how much output-trimming plugins (Caveman, Ponytail) can save at most given your output share, plus `rtk gain` totals.
 
-Token weights mirror API price ratios (cache read 0.1x, cache write 1.25x/2x, output 5x). Anthropic doesn't publish plan limits in tokens, so the project shares rank projects against each other rather than measure exact cost.
+Token weights mirror API price ratios (cache read 0.1x, cache write 1.25x/2x, output 5x). Anthropic doesn't publish plan limits in tokens, so project shares rank projects against each other rather than measure exact cost.
 
 ## Requirements
 
 - Windows 10 (2004+) or 11
-- Python 3.10+ with Tkinter (the standard installer includes it)
+- Node.js 20+
 - Claude Code logged in with a Claude subscription (`~/.claude/.credentials.json`)
-- [Pillow](https://pypi.org/project/pillow/) (`pip install pillow`) for the glass rendering
 - Optional: [rtk](https://github.com/rtk-ai/rtk) on PATH for the RTK savings line
+- Optional: [Windows Terminal](https://aka.ms/terminal) for the projects launcher
 
 ## Run
 
 ```
-pythonw sidebar.py
+npm install
+npm start
 ```
 
-The first scan of `~/.claude/projects` takes a few seconds to a minute; later scans only re-read transcripts that changed (cached in `.scan-cache.json`, git-ignored).
+The first scan of `~/.claude/projects` takes a few seconds to a minute and runs in a worker thread; later scans only re-read transcripts that changed. Limits refresh every two minutes and back off when rate limited. The scan cache and last known limits live in `%APPDATA%\claudebar`.
 
-Self-check against your real transcripts and the glass compositor, no UI:
+Tests (data layer, formatting, springs, plus a scan of your real transcripts if present):
 
 ```
-python sidebar.py --check
+npm test
+```
+
+Screenshots of every UI state, for visual checks (the live window is invisible to screen capture):
+
+```
+npx electron . --snap=shots          # add --white or --split to test light and mixed backdrops
 ```
 
 ### Start at login
 
-Create a shortcut in `shell:startup` pointing to `pythonw.exe` with the full path to `sidebar.py` as its argument.
+Create a shortcut in `shell:startup` pointing to `node_modules\electron\dist\electron.exe` with the project folder as its argument.
 
-Set `CLAUDE_DOCK_DEBUG=1` to make the windows visible to screenshots (the glass backdrop then freezes, since it would otherwise capture itself).
+## Legacy version
+
+`sidebar.py` is the original Tkinter dock (`pythonw sidebar.py`, needs Python 3.10+ and Pillow). It is no longer developed.
 
 ## Privacy
 
-Everything runs locally. The only network call is to `api.anthropic.com/api/oauth/usage`, made with your own Claude Code OAuth token, which is read from disk at request time and never stored or logged. Transcripts and the screen grabs used for the glass effect never leave your machine.
+Everything runs locally. The only network call is to `api.anthropic.com/api/oauth/usage`, made with your own Claude Code OAuth token, which is read from disk at request time and never stored or logged. Transcripts and the screen frames used for the glass effect never leave your machine.
+
+## License
+
+[MIT](LICENSE)

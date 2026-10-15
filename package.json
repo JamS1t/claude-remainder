@@ -2,6 +2,7 @@
   "name": "claudebar",
   "version": "2.0.0",
   "private": true,
+  "license": "MIT",
   "description": "Liquid-glass dock on the right screen edge for Claude Code usage: limits, live sessions, top projects, insights.",
   "main": "main.js",
   "scripts": {
