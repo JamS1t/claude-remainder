@@ -174,7 +174,7 @@
     // resting on another dock control morphs the open panel into that control's surface
     intent('swapRing', state.panel && ring, SWAP_DELAY, () => { if (zoneAt(state.pointer) === zone) setFly(zone); });
     intent('swapPanel', state.panel && want && want !== state.panel, SWAP_DELAY, () => { if (zoneAt(state.pointer) === zone) setPanel(want); });
-    intent('open', !state.panel && want, OPEN_DELAY, () => { if (zoneAt(state.pointer) === zone) setPanel(want); });
+    intent('open', !state.panel && want && !state.clickedShut, OPEN_DELAY, () => { if (zoneAt(state.pointer) === zone) setPanel(want); });
     if (state.panel) {
       // a search in progress keeps the launcher open until Esc, a pick, or a click elsewhere
       if (zone || inPanel || bridgeZone || searching()) cancel('close'); else later('close', CLOSE_DELAY, () => setPanel(false));
@@ -201,6 +201,9 @@
   function setHover(zone) {
     if (zone === state.zone) return;
     state.zone = zone;
+    // per visit to a control: was its panel already open on arrival, and did a click shut it
+    state.enterPanel = state.panel;
+    state.clickedShut = false;
     $('ring-session').classList.toggle('hover', zone === 'session');
     $('ring-weekly').classList.toggle('hover', zone === 'weekly');
     $('expand').classList.toggle('hover', zone === 'expand');
@@ -507,8 +510,13 @@
     state.drag = null;
     if (!d) return;
     if (d.moved) { try { localStorage.setItem('dockY', String(state.dockY)); } catch { /* storage unavailable */ } }
-    else if (d.zone === 'expand') setPanel(state.panel === 'details' ? false : 'details');
-    else if (d.zone === 'launch') setPanel(state.panel === 'projects' ? false : 'projects');
+    else if (d.zone === 'expand' || d.zone === 'launch') {
+      // Hover has usually opened the panel by the time the click lands, so a click only closes a
+      // panel that was already open when the pointer arrived, and keeps it shut until the pointer leaves.
+      const mode = d.zone === 'expand' ? 'details' : 'projects';
+      state.clickedShut = state.panel === mode && state.enterPanel === mode;
+      setPanel(state.clickedShut ? false : mode);
+    }
   });
   dockEl.addEventListener('contextmenu', e => { e.preventDefault(); bridge.menu(); });
   addEventListener('mousemove', e => onPointer({ x: e.clientX, y: e.clientY }));
